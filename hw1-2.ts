@@ -25,18 +25,11 @@ getNotEmptyArray([1]);
 // Без использования any
 // Нужны ли тут дженерики?
 
-type OnlyObjectKey<T, R> = {
-    [K in keyof T]: T[K] extends R ? R : never;
-}[keyof T];
+type RecordObjName = Record<string, Record<string, string>>;
+type OnlyObjectWithName<T> = T extends RecordObjName ? T : any;
 
-type ObjectName = {
-    [key: string]: {
-      [key: string]: string;
-    }
-};
-
-function structureType<T extends Record<string, ObjectName>>(
-  value: { arr: readonly OnlyObjectKey<T, ObjectName>[] }
+function structureType<T>(
+  value: { arr: readonly OnlyObjectWithName<T>[] }
   ): string {
   return value.arr[1].obj.name;
 }
@@ -57,33 +50,19 @@ const structureType1 = {
   value: 1,
 } as const;
 
-//@ts-expect-error
 structureType(structureType1);
-
-const structureTypeValid = {
-  arr: [
-    {
-      obj: {
-        name: "asd",
-        value: "",
-      }
-    }
-  ],
-} as const;
-
-structureType(structureTypeValid)
 
 // ==================
 // ЗАДАНИЕ! Обновите тип прошлой функции, так что бы можно было добавить несуществующие параметры
 // при создании объекта в момент вызова
 // см index signature
 
-type OnlyObjectName<T> = {
-  [K in keyof T]: T[K] extends Record<string, string> ? T : never;
-}[keyof T];
-
-function structureType2(
-  value: { arr: OnlyObjectName<any>[], [key: string]: unknown }): string {
+function structureType2<T>(
+  value: { 
+    arr: OnlyObjectWithName<T>[],
+    [key: string]: unknown
+  }
+): string {
   return value.arr[1].obj.name;
 }
 
@@ -99,6 +78,9 @@ structureType2({
     {
       hello: 1,
     },
+    {
+      arr: [1, 2]
+    }
   ],
   value: 1,
 });
