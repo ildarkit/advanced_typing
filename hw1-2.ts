@@ -3,7 +3,7 @@
 // Без использования any
 // Тест кейсы придумайте, сами)
 
-function getAnyArray<T>(param: readonly T[]) {}
+function getAnyArray(param: readonly unknown[]) {}
 
 const arr = [1, 2, 3] as const;
 getAnyArray(arr);
@@ -14,7 +14,7 @@ getAnyArray(words);
 // ЗАДАНИЕ! Напишите тип которому assignable любой массив длинной больше 1
 // Без использования any
 
-function getNotEmptyArray<T>(param: [T, ...T[]]) {}
+function getNotEmptyArray(param: [unknown, ...unknown[]]) {}
 
 // @ts-expect-error
 getNotEmptyArray([]);
@@ -79,7 +79,7 @@ structureType(structureTypeValid)
 // см index signature
 
 type OnlyObjectName<T> = {
-    [K in keyof T]: T[K] extends Record<string, string> ? T[K] : never;
+  [K in keyof T]: T[K] extends Record<string, string> ? T : never;
 }[keyof T];
 
 function structureType2(
@@ -106,7 +106,7 @@ structureType2({
 // ==================
 // ЗАДАНИЕ! При пересечении с каким типом всегда будет получаться изначальный тип?
 
-type TestIntersection<T> = T & string;
+type TestIntersection<T> = T & unknown;
 type ResTestIntersection = TestIntersection<string>; // res should be string
 
 // ==================
@@ -118,7 +118,7 @@ type ResTestIntersection2 = TestIntersection2<string>; // res should be never
 // ==================
 // ЗАДАНИЕ! При объединении с каким типом всегда будет получаться тот же самый тип?
 
-type TestUnion<T> = T | T;
+type TestUnion<T> = T | never;
 type ResTestUnion = TestUnion<number>; // res should be number
 
 // ==================
@@ -129,7 +129,7 @@ type ResTestUnion2 = TestUnion2<string>; // res should be unknown
 // ==================
 // ЗАДАНИЕ! Как с помощью пересечения можно отфильтровать все числа
 
-type FilterIntersection<T> = T & ("value" | "b");
+type FilterIntersection<T> = T & string;
 type ResFilterIntersection = FilterIntersection<1 | 2 | "value" | "b">; // res should be 'value' | 'b'
 
 // ==================
@@ -144,6 +144,8 @@ type ResFindEventByIntersection = FindEventByIntersection<
   Event1 | Event2,
   "user-deleted"
 >; // Res should assignable Event2
+
+const e: Event2 = { type: "user-deleted", data: { id: 12 }} as ResFindEventByIntersection;
 
 // ==================
 // ЗАДАНИЕ! Напишите такой тип что бы функцию можно было вызвать 3 разными способами
