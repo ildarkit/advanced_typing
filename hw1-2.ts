@@ -25,12 +25,11 @@ getNotEmptyArray([1]);
 // Без использования any
 // Нужны ли тут дженерики?
 
-type RecordObjName = Record<string, Record<string, string>>;
-type OnlyObjectWithName<T> = T extends RecordObjName ? T : any;
+type RecordName = Record<string, Record<string, string>>;
 
-function structureType<T>(
-  value: { arr: readonly OnlyObjectWithName<T>[] }
-  ): string {
+function structureType(
+  value: { arr: readonly [unknown, RecordName, ...unknown[]] }
+): string {
   return value.arr[1].obj.name;
 }
 
@@ -56,6 +55,8 @@ structureType(structureType1);
 // ЗАДАНИЕ! Обновите тип прошлой функции, так что бы можно было добавить несуществующие параметры
 // при создании объекта в момент вызова
 // см index signature
+
+type OnlyObjectWithName<T> = T extends RecordName ? T : any;
 
 function structureType2<T>(
   value: { 
