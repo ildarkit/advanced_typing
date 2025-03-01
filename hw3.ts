@@ -90,10 +90,54 @@ type Res1 = RemoveByValue<{ value: string | null, arg: number }, number> // { va
 // задание 3
 
 type SafeMerge<T, U> = {
-  [K in keyof (T & U)]: K extends keyof (T | U) ? U[K] : K extends keyof T ? T[K] : K extends keyof U ? U[K] : never;
+  [K in keyof (T & U)]: K extends keyof (T | U)
+   ? U[K] : K extends keyof T
+    ? T[K] : K extends keyof U ? U[K] : never;
 };
 
 // Если есть общие поля берётся последний
-type Res2 = SafeMerge<{ value: string, common: string }, { value2: number, common: number }> // { value: string, value:2 number, common: number }
+type Res2 = SafeMerge<
+  { value: string, common: string },
+  { value2: number, common: number }
+> // { value: string, value:2 number, common: number }
 
 // 9. recursion
+// задание 1
+type DeepRequired<T> = {
+  [K in keyof T]-?: DeepRequired<T[K]>;
+};
+
+type Res3 = DeepRequired<{
+    value?: {
+        title?: string
+    }
+}> // { value: { title: string } }
+
+// задание 2
+
+type Flatten<T extends unknown[]> = T extends [infer E, ...infer R]
+ ? E extends unknown[]
+  ? [...Flatten<E>, ...Flatten<R>]
+  : [E, ...Flatten<R>] : T; 
+
+type Res4 = Flatten<[1,2, [1,2, [3]]]> // [1,2,1,2,3]
+
+// задание 3
+
+// перепешите Reverse на хвостовую рекурсию
+type Reverse<T extends unknown[], R extends unknown[] = []> =
+ T extends [infer F, ...infer L]
+ ? Reverse<L, [F, ...R]> : R;
+ 
+type Ten = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+// глубина рекурсии больше 50
+type Res5 = Reverse<[...Ten, ...Ten, ...Ten, ...Ten, ...Ten, 1]>
+
+// задание 4
+
+type SafeMergeTuple<T extends unknown[], R extends{} = {}> = T extends [infer F, ...infer L]
+ ? SafeMergeTuple<L, SafeMerge<R, F>> : R;
+
+type Res6 = SafeMergeTuple<
+  [{ value: string }, { name: string }, { age: number; name: number }]
+>; // { value: string, name: number , age: number}
