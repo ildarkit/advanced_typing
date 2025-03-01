@@ -74,7 +74,7 @@ type Result3 = Pop<[3, 2, 1]> // [3, 2]
 // 8. mapped types
 // задание 1
 type NotNull<T> = {
-  [K in keyof T]: Exclude<T[K], null>;
+  [K in keyof T]: T[K] extends infer U | null ? U : never;
 };
 
 type Res = NotNull<{ value: string | null, arg: string }> // { value: string, arg: string }
