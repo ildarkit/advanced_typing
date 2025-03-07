@@ -46,7 +46,7 @@ type RemoveTodoItem = RemoveItem<AddTodoItem, 4>;
 type UpdateText<TodoList, Id extends number, Text extends string> =
   TodoList extends [infer F extends TodoItem, ...infer R extends TodoItem[]]
     ? F["id"] extends Id
-      ? [{ id: F["id"], text: Text, completed: F["completed"] }, ...R]
+      ? [{ [K in keyof F]: K extends 'text' ? Text : F[K] }, ...R]
       : [F, ...UpdateText<R, Id, Text>]
     : TodoList;
 type UpdateTodoText = UpdateText<RemoveTodoItem, 2, "Swimming">;
@@ -55,7 +55,7 @@ type UpdateTodoText = UpdateText<RemoveTodoItem, 2, "Swimming">;
 type ToggleCompleted<TodoList, Id extends number> =
   TodoList extends [infer F extends TodoItem, ...infer R extends TodoItem[]]
     ? F["id"] extends Id
-      ? [{ id: F["id"], text: F["text"], completed: true }, ...R]
+      ? [{ [K in keyof F]: K extends 'completed' ? true : F[K] }, ...R]
       : [F, ...ToggleCompleted<R, Id>]
     : TodoList;
 type ToggleTodoItem = ToggleCompleted<UpdateTodoText, 1>;
