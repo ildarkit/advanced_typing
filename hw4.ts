@@ -13,7 +13,9 @@ type FilterTuple<T, V> =
     : T;
 
 type R1 = FilterTuple<[1, number, string], number>; // [1, string]
+//  ^?
 type R2 = FilterTuple<[1, number, string], 1>; // [number, string]
+//  ^?
 
 // 2. tuplify union
 export type IsNever<T> = [T] extends [never] ? true : false;
@@ -38,11 +40,35 @@ type ObjectToTuple<T, R = []> =
     : R;
 
 type R3 = ObjectToTuple<{name: string, value: string}>; // [['name', string], ['value', string]]
+//  ^?
 
 // 3. spread
-type Spread<T, U> = ;
+export type RequiredKeysOf<BaseType extends object> = Exclude<{
+	[Key in keyof BaseType]: BaseType extends Record<Key, BaseType[Key]>
+		? Key
+		: never
+}[keyof BaseType], undefined>;
+
+export type OptionalKeysOf<BaseType extends object> = Exclude<{
+	[Key in keyof BaseType]: BaseType extends Record<Key, BaseType[Key]>
+		? never
+		: Key
+}[keyof BaseType], undefined>;
+
+type Spread<T extends object, U extends object> = {
+  [K in keyof (T & U)]: RequiredKeysOf<T> extends OptionalKeysOf<U>
+    ? T[K & keyof T] | U[K & keyof U]
+    : OptionalKeysOf<T> extends RequiredKeysOf<U>
+      ? T[K & keyof T] | U[K & keyof U] : T[K & keyof T];
+};
 
 type R4 = Spread<{name: string}, {name: number}>; // { name: number }
+//  ^?
 type R5 = Spread<{name: string}, {name?: number }>; // { name: string | number | undefined }
-type R6 = Spread<{name?: string}, {name?: number }>; // { name?: string | number | undefined }
-
+//  ^?
+type R6 = Spread<{name?: string; key: string}, {name: number }>; // { name: string | number | undefined; key: string }
+//  ^?
+type R7 = Spread<{name?: string}, {name?: number }>; // { name?: string | number | undefined }
+//  ^?
+type R8 = Spread<{name?: string}, {name: number; key?: string }>; // { name: string | number | undefined; key?: string | undefined }
+//  ^?
