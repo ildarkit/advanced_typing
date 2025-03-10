@@ -56,10 +56,8 @@ export type OptionalKeysOf<BaseType extends object> = Exclude<{
 }[keyof BaseType], undefined>;
 
 type Spread<T extends object, U extends object> = {
-  [K in keyof (T & U)]: RequiredKeysOf<T> extends OptionalKeysOf<U>
-    ? T[K & keyof T] | U[K & keyof U]
-    : OptionalKeysOf<T> extends RequiredKeysOf<U>
-      ? T[K & keyof T] | U[K & keyof U] : T[K & keyof T];
+  [K in keyof (T & U)]: RequiredKeysOf<T> & RequiredKeysOf<U> extends never
+    ? T[K & keyof T] | U[K & keyof U] : U[K & keyof U];
 };
 
 type R4 = Spread<{name: string}, {name: number}>; // { name: number }
