@@ -42,12 +42,9 @@ type ObjectToTuple<T, R = []> =
 type R3 = ObjectToTuple<{name: string, value: string}>; // [['name', string], ['value', string]]
 //  ^?
 
-// 3. spread
-export type RequiredKeysOf<BaseType extends object> = Exclude<{
-	[Key in keyof BaseType]: BaseType extends Record<Key, BaseType[Key]>
-		? Key
-		: never
-}[keyof BaseType], undefined>;
+// 3. OptionalToUndefined
+// С помощью утилиты OptionalKeysOf допишите утилиту так что бы опциональные поля изначального объекта стали обязательными полями
+// но объединёнными с undefined. Обязательные поля изначального объекта оставьте без изменений
 
 export type OptionalKeysOf<BaseType extends object> = Exclude<{
 	[Key in keyof BaseType]: BaseType extends Record<Key, BaseType[Key]>
@@ -55,18 +52,50 @@ export type OptionalKeysOf<BaseType extends object> = Exclude<{
 		: Key
 }[keyof BaseType], undefined>;
 
-type Spread<T extends object, U extends object> = {
-  [K in keyof (T & U)]: RequiredKeysOf<T> & RequiredKeysOf<U> extends never
-    ? T[K & keyof T] | U[K & keyof U] : U[K & keyof U];
+type OptionalToUndefined<T extends object> = {
+  [K in keyof T | OptionalKeysOf<T>]-?:
+    K extends OptionalKeysOf<T>
+      ? T[K] | undefined
+      : T[K];
 };
 
-type R4 = Spread<{name: string}, {name: number}>; // { name: number }
+type R = OptionalToUndefined<{ value: string, name?: string }> // { value: string, name: string | undefined }
+
+// Дополнительное задание со *
+// 4. spread
+export type RequiredKeysOf<BaseType extends object> = Exclude<{
+	[Key in keyof BaseType]: BaseType extends Record<Key, BaseType[Key]>
+		? Key
+		: never
+}[keyof BaseType], undefined>;
+
+export type Simplify<T> = {[KeyType in keyof T]: T[KeyType]} & {};
+
+type Spread<T extends object, U extends object> = Simplify<{
+  // only required
+  [K in RequiredKeysOf<T> | RequiredKeysOf<U> as K extends OptionalKeysOf<U> ? never : K]:
+    K extends RequiredKeysOf<U>
+      ? U[K]
+      : T[K & keyof T];
+} & {
+  // optional U | required T
+  [K in OptionalKeysOf<U> as K extends RequiredKeysOf<T> ? K : never]:
+    T[K & keyof T] | U[K & keyof U];
+} & {
+  // only optional
+  [K in OptionalKeysOf<T> | OptionalKeysOf<U> as K extends RequiredKeysOf<T> | RequiredKeysOf<U> ? never : K]?:
+    T[K & keyof T] | U[K & keyof U]; 
+}>;
+
+type R4 = Spread<{name: string; key?: string}, {name: number; key: string}>; // { name: number; key: string }
 //  ^?
 type R5 = Spread<{name: string}, {name?: number }>; // { name: string | number | undefined }
 //  ^?
-type R6 = Spread<{name?: string; key: string}, {name: number }>; // { name: string | number | undefined; key: string }
+type R6 = Spread<{name?: string; key: string}, {name: number }>; // { name: number; key: string }
 //  ^?
 type R7 = Spread<{name?: string}, {name?: number }>; // { name?: string | number | undefined }
 //  ^?
-type R8 = Spread<{name?: string}, {name: number; key?: string }>; // { name: string | number | undefined; key?: string | undefined }
+type R8 = Spread<{name?: string}, {name: number; key?: string }>; // { name: number; key?: string | undefined }
+//  ^?
+type R9 = Spread<{name: string; app: number}, {name: number; key: string}>;
 //  ^?
