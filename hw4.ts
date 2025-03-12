@@ -53,7 +53,7 @@ export type OptionalKeysOf<BaseType extends object> = Exclude<{
 }[keyof BaseType], undefined>;
 
 type OptionalToUndefined<T extends object> = {
-  [K in keyof T | OptionalKeysOf<T>]-?:
+  [K in keyof T | OptionalKeysOf<T>]:
     K extends OptionalKeysOf<T>
       ? T[K] | undefined
       : T[K];
@@ -71,7 +71,13 @@ export type RequiredKeysOf<BaseType extends object> = Exclude<{
 
 export type Simplify<T> = {[KeyType in keyof T]: T[KeyType]} & {};
 
-type Spread<T extends object, U extends object> = Simplify<{
+type Spread<T extends object, U extends object> = {
+  [K in keyof (T & U)]: K extends RequiredKeysOf<U>
+    ? U[K]
+    : T[K & keyof T] | U[K & keyof U];
+};
+
+type Spread2<T extends object, U extends object> = Simplify<{
   // only required
   [K in RequiredKeysOf<T> | RequiredKeysOf<U> as K extends OptionalKeysOf<U> ? never : K]:
     K extends RequiredKeysOf<U>
