@@ -21,6 +21,7 @@ type BaseSchema<Type extends string = string, T = unknown> = {
   safeParse: (value: unknown) => SaveResult<T>;
   optional: () => OptionalSchema<T>;
   transform: <E extends BaseSchema>(callback: (value: T) => unknown) => TransformSchema<Infer<E>>;
+  array: <E extends BaseSchema>() => ArraySchema<Infer<E>>;
   __value: T;
 };
 
@@ -43,6 +44,7 @@ type UnionSchema<T extends BaseSchema[]> = BaseSchema<
   }[number]
 >;
 type TransformSchema<T> = BaseSchema<"transform", T>;
+type ArraySchema<T> = BaseSchema<"array", T[]>;
 
 type Simplify<T> = { [K in keyof T]: T[K] } & {};
 
@@ -89,6 +91,9 @@ const z = {
       transform: (callback: (value: Infer<UnionSchema<T>>) => unknown) => {
         return z.transform(unionSchema, callback);
       },
+      array: () => {
+        return z.array(unionSchema);
+      },
       __value: undefined as never,
     };
     return unionSchema;
@@ -114,6 +119,9 @@ const z = {
       transform: (callback: (value: T) => unknown) => {
         return z.transform(literalSchema, callback);
       },
+      array: () => {
+        return z.array(literalSchema);
+      },
       __value: undefined as never,
     };
     return literalSchema;
@@ -130,6 +138,9 @@ const z = {
       optional: () => z.optional(optionalSchema),
       transform: (callback: (value: Infer<T> | undefined) => unknown) => {
         return z.transform(schema, callback);
+      },
+      array: () => {
+        return z.array(optionalSchema);
       },
       __value: undefined as never,
     };
@@ -155,6 +166,9 @@ const z = {
       optional: () => z.optional(stringSchema),
       transform: (callback: (value: string) => unknown) => {
         return z.transform(stringSchema, callback);
+      },
+      array: () => {
+        return z.array(stringSchema);
       },
       __value: undefined as never,
     };
@@ -218,6 +232,9 @@ const z = {
       params: params ?? {},
       transform: (callback: (value: number) => unknown) => {
         return z.transform(numberSchema, callback);
+      },
+      array: () => {
+        return z.array(numberSchema);
       },
       __value: undefined as never,
     };
@@ -286,6 +303,9 @@ const z = {
       transform: (callback: (value: ObjectSchemasToValues<T>) => unknown) => {
         return z.transform(objectSchema, callback);
       },
+      array: () => {
+        return z.array(objectSchema);
+      },
       __value: undefined as never,
     };
 
@@ -309,13 +329,42 @@ const z = {
       transform: (callback: (value: Infer<T>) => unknown) => {
         return z.transform(schema, callback);
       },
+      array: () => {
+        return z.array(schema);
+      },
       __value: undefined as never,
     };
 
     return transformSchema;
   },
+  array: <T extends BaseSchema>(schema: T) => {
+    const arraySchema: ArraySchema<Infer<T>> = {
+      type: 'array',
+      safeParse(unknownValue) {
+        const result = schema.safeParse(unknownValue);
+        if (result.success)
+          return successResult([result.data]);
+        else return errorResult(result.error);
+      },
+      optional: () => z.optional(arraySchema),
+      transform: (callback: (value: Infer<T>[]) => unknown) => {
+        return z.transform(arraySchema, callback);
+      },
+      array: () => {
+        return z.array(schema);
+      },
+      __value: undefined as never,
+    };
+
+    return arraySchema;
+  }
 };
 
 const strLength = z.string().transform(v => z.number({min: 8}).safeParse(v.length));
 const res1 = strLength.safeParse('less');
 console.log(res1);
+
+const num = z.number({min: 1}).array();
+const res2 = num.safeParse(1);
+console.log(res2);
+
