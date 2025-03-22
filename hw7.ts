@@ -34,7 +34,10 @@ type NumberSchema = BaseSchema<"number", number> & {
   min: (min: number) => NumberSchema;
   max: (max: number) => NumberSchema;
 };
-type StringSchema = BaseSchema<"string", string>;
+type StringSchema = BaseSchema<"string", string> & {
+  trim: () => TrimSchema;
+};
+type TrimSchema = BaseSchema<"trim", string>;
 type ObjectSchema<T> = BaseSchema<"object", T>;
 type LiteralSchema<T> = BaseSchema<"literal", T>;
 type UnionSchema<T extends BaseSchema[]> = BaseSchema<
@@ -170,10 +173,36 @@ const z = {
       array: () => {
         return z.array(stringSchema);
       },
+      trim: () => {
+        return z.trim(stringSchema);
+      },
       __value: undefined as never,
     };
 
     return stringSchema;
+  },
+  trim: (schema: StringSchema) => {
+    const trimSchema: TrimSchema = {
+      type: "trim",
+      safeParse: (unknownValue) => {
+        const result = schema.safeParse(unknownValue);
+        if (result.success) {
+          const trimStr = result.data.trim();
+          return successResult(trimStr);
+        }
+        return errorResult(result.error);
+      },
+      optional: () => z.optional(trimSchema),
+      transform: (callback: (value: string) => unknown) => {
+        return z.transform(trimSchema, callback);
+      },
+      array: () => {
+        return z.array(trimSchema);
+      },
+      __value: undefined as never,
+    };
+
+    return trimSchema;
   },
   number: (params?: { min?: number; max?: number }) => {
     const numberSchema: NumberSchema = {
@@ -367,4 +396,8 @@ console.log(res1);
 const num = z.number({min: 1}).array();
 const res2 = num.safeParse(1);
 console.log(res2);
+
+const trimStr = z.string().trim();
+const res3 = trimStr.safeParse('  hello world  !   ');
+console.log(res3);
 
