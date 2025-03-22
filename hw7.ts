@@ -38,7 +38,11 @@ type StringSchema = BaseSchema<"string", string> & {
   trim: () => TrimSchema;
 };
 type TrimSchema = BaseSchema<"trim", string>;
-type ObjectSchema<T> = BaseSchema<"object", T>;
+type ObjectSchema<T> = BaseSchema<"object", T> & {
+  extends: <E extends Record<string, BaseSchema>>(value: E) =>
+    ExtendsSchema<ObjectSchemasToValues<Record<string, BaseSchema>>>;
+};
+type ExtendsSchema<T> = BaseSchema<"extends", T>;
 type LiteralSchema<T> = BaseSchema<"literal", T>;
 type UnionSchema<T extends BaseSchema[]> = BaseSchema<
   "union",
@@ -335,10 +339,32 @@ const z = {
       array: () => {
         return z.array(objectSchema);
       },
+      extends: (extendedSchemasObject) => {
+        const extendObjSchema = z.object({ ...schemasObject, ...extendedSchemasObject});
+        return z.extends(extendObjSchema);
+      },
       __value: undefined as never,
     };
 
     return objectSchema;
+  },
+  extends: <T extends Record<string, BaseSchema>>(schema: ObjectSchema<ObjectSchemasToValues<T>>) => {
+    const extendsSchema: ExtendsSchema<ObjectSchemasToValues<T>> = {
+      type: 'extends',
+      safeParse: (unknownValue) => {
+        return schema.safeParse(unknownValue);
+      },
+      optional: () => z.optional(extendsSchema),
+      transform: (callback: (value: ObjectSchemasToValues<T>) => unknown) => {
+        return z.transform(extendsSchema, callback);
+      },
+      array: () => {
+        return z.array(extendsSchema);
+      },
+      __value: undefined as never,
+    };
+
+    return extendsSchema;
   },
   transform: <T extends BaseSchema>(schema: T, callback: (value: Infer<T>) => unknown) => {
     const transformSchema: TransformSchema<Infer<T>> = {
@@ -401,3 +427,11 @@ const trimStr = z.string().trim();
 const res3 = trimStr.safeParse('  hello world  !   ');
 console.log(res3);
 
+const objValue = z.object({
+  id: z.number(),
+  name: z.string(),
+}).extends({ 
+  age: z.number().optional()
+});
+const res4 = objValue.safeParse({ id: 1, name: 'Bob', age: 25 });
+console.log(res4);
