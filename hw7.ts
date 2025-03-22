@@ -20,6 +20,7 @@ type BaseSchema<Type extends string = string, T = unknown> = {
   type: Type;
   safeParse: (value: unknown) => SaveResult<T>;
   optional: () => OptionalSchema<T>;
+  transform: <E extends BaseSchema>(callback: (value: T) => unknown) => TransformSchema<Infer<E>>;
   __value: T;
 };
 
@@ -41,6 +42,7 @@ type UnionSchema<T extends BaseSchema[]> = BaseSchema<
     [K in keyof T]: Infer<T[K]>;
   }[number]
 >;
+type TransformSchema<T> = BaseSchema<"transform", T>;
 
 type Simplify<T> = { [K in keyof T]: T[K] } & {};
 
@@ -84,6 +86,9 @@ const z = {
         return errorResult(new ZodError(issues));
       },
       optional: () => z.optional(unionSchema),
+      transform: (callback: (value: Infer<UnionSchema<T>>) => unknown) => {
+        return z.transform(unionSchema, callback);
+      },
       __value: undefined as never,
     };
     return unionSchema;
@@ -106,6 +111,9 @@ const z = {
         );
       },
       optional: () => z.optional(literalSchema),
+      transform: (callback: (value: T) => unknown) => {
+        return z.transform(literalSchema, callback);
+      },
       __value: undefined as never,
     };
     return literalSchema;
@@ -120,6 +128,9 @@ const z = {
         return schema.safeParse(unknownValue);
       },
       optional: () => z.optional(optionalSchema),
+      transform: (callback: (value: Infer<T> | undefined) => unknown) => {
+        return z.transform(schema, callback);
+      },
       __value: undefined as never,
     };
     return optionalSchema;
@@ -142,6 +153,9 @@ const z = {
         );
       },
       optional: () => z.optional(stringSchema),
+      transform: (callback: (value: string) => unknown) => {
+        return z.transform(stringSchema, callback);
+      },
       __value: undefined as never,
     };
 
@@ -153,7 +167,6 @@ const z = {
       safeParse: (unknownValue) => {
         if (typeof unknownValue === "number") {
           let issues: ZodIssue[] = [];
-
           if (
             numberSchema.params.max &&
             unknownValue > numberSchema.params.max
@@ -203,6 +216,9 @@ const z = {
           min,
         }),
       params: params ?? {},
+      transform: (callback: (value: number) => unknown) => {
+        return z.transform(numberSchema, callback);
+      },
       __value: undefined as never,
     };
 
@@ -267,56 +283,39 @@ const z = {
         }
       },
       optional: () => z.optional(objectSchema),
+      transform: (callback: (value: ObjectSchemasToValues<T>) => unknown) => {
+        return z.transform(objectSchema, callback);
+      },
       __value: undefined as never,
     };
 
     return objectSchema;
   },
+  transform: <T extends BaseSchema>(schema: T, callback: (value: Infer<T>) => unknown) => {
+    const transformSchema: TransformSchema<Infer<T>> = {
+      type: 'transform',
+      safeParse: (unknownValue) => {
+        const result = schema.safeParse(unknownValue);
+        if (result.success) {
+          const value = callback(result.data);
+          return successResult(value);
+        } else {
+          return errorResult(
+            result.error
+          );
+        }
+      },
+      optional: () => z.optional(transformSchema),
+      transform: (callback: (value: Infer<T>) => unknown) => {
+        return z.transform(schema, callback);
+      },
+      __value: undefined as never,
+    };
+
+    return transformSchema;
+  },
 };
 
-const RoleSchema = z.union([z.literal("user"), z.literal("admin")]);
-type Role = Infer<typeof RoleSchema>;
-
-const User = z.object({
-  role: z.literal("user"),
-  username: z.string().optional(),
-  value: z.number().min(1).max(10),
-  obj: z.object({
-    key: z.string().optional(),
-  }),
-});
-
-const Admin = z.object({
-  role: z.literal("admin"),
-  username: z.string().optional(),
-  value: z.number().min(1).max(10),
-});
-
-const AnyUser = z.union([User, Admin])
-
-const strSchema = z.string();
-
-const res2 = strSchema.safeParse(1);
-
-type Str = Infer<typeof strSchema>;
-
-type User = Infer<typeof User>;
-
-const res = AnyUser.safeParse({ role: "user", value: 2,  });
-
-console.log(res);
-if (res.success) {
-  if(res.data.role === 'user'){
-    res.data.obj.key
-  }
-} else {
-  res.error.issues.forEach((e) => {
-    e.code;
-    e.message;
-    e.path;
-  });
-}
-
-console.log("=============================");
-console.log("=============================");
-
+const strLength = z.string().transform(v => z.number({min: 8}).safeParse(v.length));
+const res1 = strLength.safeParse('less');
+console.log(res1);
