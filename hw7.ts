@@ -215,7 +215,7 @@ const z = {
         if (typeof unknownValue === "number") {
           let issues: ZodIssue[] = [];
           if (
-            numberSchema.params.max &&
+            numberSchema.params.max !== undefined &&
             unknownValue > numberSchema.params.max
           ) {
             issues.push({
@@ -226,7 +226,7 @@ const z = {
           }
 
           if (
-            numberSchema.params.min &&
+            numberSchema.params.min !== undefined &&
             unknownValue < numberSchema.params.min
           ) {
             issues.push({
