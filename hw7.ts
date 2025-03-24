@@ -348,14 +348,14 @@ const z = {
 
     return objectSchema;
   },
-  extends: <T extends Record<string, BaseSchema>>(schema: ObjectSchema<ObjectSchemasToValues<T>>) => {
-    const extendsSchema: ExtendsSchema<ObjectSchemasToValues<T>> = {
+  extends: <T extends BaseSchema>(schema: T) => {
+    const extendsSchema: ExtendsSchema<Infer<T>> = {
       type: 'extends',
       safeParse: (unknownValue) => {
         return schema.safeParse(unknownValue);
       },
       optional: () => z.optional(extendsSchema),
-      transform: (callback: (value: ObjectSchemasToValues<T>) => unknown) => {
+      transform: (callback: (value: unknown) => unknown) => {
         return z.transform(extendsSchema, callback);
       },
       array: () => {
@@ -395,7 +395,7 @@ const z = {
   array: <T extends BaseSchema>(schema: T) => {
     const arraySchema: ArraySchema<Infer<T>> = {
       type: 'array',
-      safeParse(unknownValue) {
+      safeParse: (unknownValue) => {
         const result = schema.safeParse(unknownValue);
         if (result.success)
           return successResult([result.data]);
