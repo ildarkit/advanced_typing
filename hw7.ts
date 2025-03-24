@@ -21,7 +21,7 @@ type BaseSchema<Type extends string = string, T = unknown> = {
   safeParse: (value: unknown) => SaveResult<T>;
   optional: () => OptionalSchema<T>;
   transform: <E extends BaseSchema>(callback: (value: T) => unknown) => TransformSchema<Infer<E>>;
-  array: <E extends BaseSchema>() => ArraySchema<Infer<E>>;
+  array: () => ArraySchema<T>;
   __value: T;
 };
 
@@ -38,9 +38,9 @@ type StringSchema = BaseSchema<"string", string> & {
   trim: () => TrimSchema;
 };
 type TrimSchema = BaseSchema<"trim", string>;
-type ObjectSchema<T> = BaseSchema<"object", T> & {
+type ObjectSchema<T extends Record<string, BaseSchema>> = BaseSchema<"object", T> & {
   extends: <E extends Record<string, BaseSchema>>(value: E) =>
-    ExtendsSchema<ObjectSchemasToValues<Record<string, BaseSchema>>>;
+    ExtendsSchema<ObjectSchemasToValues<T & E>>;
 };
 type ExtendsSchema<T> = BaseSchema<"extends", T>;
 type LiteralSchema<T> = BaseSchema<"literal", T>;
@@ -51,7 +51,7 @@ type UnionSchema<T extends BaseSchema[]> = BaseSchema<
   }[number]
 >;
 type TransformSchema<T> = BaseSchema<"transform", T>;
-type ArraySchema<T> = BaseSchema<"array", T[]>;
+type ArraySchema<T> = BaseSchema<"array", T>;
 
 type Simplify<T> = { [K in keyof T]: T[K] } & {};
 
@@ -275,7 +275,7 @@ const z = {
     return numberSchema;
   },
   object: <T extends Record<string, BaseSchema>>(schemasObject: T) => {
-    const objectSchema: ObjectSchema<ObjectSchemasToValues<T>> = {
+    const objectSchema: ObjectSchema<T> = {
       type: "object",
       safeParse: (unknownValue) => {
         if (typeof unknownValue !== "object" || unknownValue === null) {
@@ -333,7 +333,7 @@ const z = {
         }
       },
       optional: () => z.optional(objectSchema),
-      transform: (callback: (value: ObjectSchemasToValues<T>) => unknown) => {
+      transform: (callback: (value: T) => unknown) => {
         return z.transform(objectSchema, callback);
       },
       array: () => {
@@ -402,8 +402,8 @@ const z = {
         else return errorResult(result.error);
       },
       optional: () => z.optional(arraySchema),
-      transform: (callback: (value: Infer<T>[]) => unknown) => {
-        return z.transform(arraySchema, callback);
+      transform: (callback: (value: Infer<T>) => unknown) => {
+        return z.transform(schema, callback);
       },
       array: () => {
         return z.array(schema);
