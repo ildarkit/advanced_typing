@@ -406,7 +406,7 @@ const z = {
         return z.transform(schema, callback);
       },
       array: () => {
-        return z.array(schema);
+        return z.array(arraySchema);
       },
       __value: undefined as never,
     };
