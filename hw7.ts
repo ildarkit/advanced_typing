@@ -51,7 +51,7 @@ type UnionSchema<T extends BaseSchema[]> = BaseSchema<
   }[number]
 >;
 type TransformSchema<T> = BaseSchema<"transform", T>;
-type ArraySchema<T> = BaseSchema<"array", T>;
+type ArraySchema<T> = BaseSchema<"array", T[]>;
 
 type Simplify<T> = { [K in keyof T]: T[K] } & {};
 
@@ -402,8 +402,8 @@ const z = {
         else return errorResult(result.error);
       },
       optional: () => z.optional(arraySchema),
-      transform: <E,>(callback: (value: Infer<T>) => E) => {
-        return z.transform(schema, callback);
+      transform: <E,>(callback: (value: Infer<ArraySchema<Infer<T>>>) => E) => {
+        return z.transform(arraySchema, callback);
       },
       array: () => {
         return z.array(arraySchema);
@@ -419,7 +419,7 @@ const strLength = z.string().transform(v => z.number({min: 8}).safeParse(v.lengt
 const res1 = strLength.safeParse('less');
 console.log(res1);
 
-const num = z.number({min: 1}).array();
+const num = z.number({min: 1}).array().array();
 const res2 = num.safeParse(1);
 console.log(res2);
 
@@ -431,7 +431,7 @@ const objValue = z.object({
   id: z.number(),
   name: z.string(),
 }).extends({ 
-  age: z.number().optional()
+  age: z.number().optional().array()
 });
 const res4 = objValue.safeParse({ id: 1, name: 'Bob', age: 25 });
 console.log(res4);
