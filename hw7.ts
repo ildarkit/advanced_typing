@@ -408,10 +408,38 @@ const z = {
     const arraySchema: ArraySchema<Infer<T>> = {
       type: 'array',
       safeParse: (unknownValue) => {
-        const result = schema.safeParse(unknownValue);
-        if (result.success)
-          return successResult([result.data]);
-        else return errorResult(result.error);
+        if (!Array.isArray(unknownValue)) {
+          return errorResult(
+            new ZodError([
+              {
+                code: "not-array",
+                message: "Value should be array",
+                path: "",
+              },
+            ]),
+          );
+        }
+
+        const results = [];
+        const issues = [];
+
+        for (let i = 0; i < unknownValue.length; i++) {
+          const result = schema.safeParse(unknownValue[i]);
+          if (result.success) 
+            results.push(result.data);
+          else {
+            issues.push(
+              ...result.error.issues.map((issue) => ({
+                ...issue,
+                path: `/${i}${issue.path}`,
+              })),
+            );
+          }
+        }
+
+        if (issues.length === 0)
+          return successResult(results);
+        return errorResult(new ZodError(issues));
       },
       optional: () => z.optional(arraySchema),
       transform: <E,>(callback: (value: Infer<ArraySchema<Infer<T>>>) => E) => {
@@ -432,7 +460,7 @@ const res1 = strLength.safeParse('less');
 console.log(res1);
 
 const num = z.number({min: 1}).array().transform(v => v.map(i => i * 2));
-const res2 = num.safeParse(1);
+const res2 = num.safeParse([1, 2, 4]);
 console.log(res2);
 
 const trimStr = z.string().trim();
