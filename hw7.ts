@@ -12,6 +12,15 @@ class ZodError extends Error {
 
 type Infer<T extends BaseSchema> = T["__value"];
 
+type Merge<
+  T extends Record<string, BaseSchema>,
+  E extends Record<string, BaseSchema>
+> = {
+  [K in keyof (T & E)]: K extends keyof E
+   ? E[K]
+   : T[K & keyof T]
+};
+
 type SaveResult<T> =
   | { success: true; data: T }
   | { success: false; error: ZodError };
@@ -40,9 +49,8 @@ type StringSchema = BaseSchema<"string", string> & {
 type TrimSchema = BaseSchema<"trim", string>;
 type ObjectSchema<T extends Record<string, BaseSchema>> = BaseSchema<"object", T> & {
   extends: <E extends Record<string, BaseSchema>>(value: E) =>
-    ExtendsSchema<ObjectSchemasToValues<T & E>>;
+    ObjectSchema<Simplify<Merge<T, E>>>;
 };
-type ExtendsSchema<T> = BaseSchema<"extends", T>;
 type LiteralSchema<T> = BaseSchema<"literal", T>;
 type UnionSchema<T extends BaseSchema[]> = BaseSchema<
   "union",
@@ -76,6 +84,29 @@ const errorResult = (error: ZodError) => ({
   success: false as const,
   error,
 });
+
+function merge<
+  T extends Record<string, BaseSchema>,
+  E extends Record<string, BaseSchema>,
+  U extends Record<string, BaseSchema>,
+>(objSchema: T, extendSchema: E) {
+  const keys = [
+    ...new Set([
+      ...Object.keys(objSchema),
+      ...Object.keys(extendSchema)
+    ])
+  ];
+
+  return keys.reduce(
+    (schema, key) => {
+      const item = key in extendSchema 
+        ? { [key]: extendSchema[key] }
+        : { [key]: objSchema[key] };
+      return { ...schema, ...item };
+    }, 
+    {} as U
+  );
+}
 
 const z = {
   union: <T extends BaseSchema[]>(schemasTuple: T) => {
@@ -339,32 +370,13 @@ const z = {
       array: () => {
         return z.array(objectSchema);
       },
-      extends: (extendedSchemasObject) => {
-        const extendObjSchema = z.object({ ...schemasObject, ...extendedSchemasObject});
-        return z.extends(extendObjSchema);
+      extends: (extendSchemasObject) => {
+        return z.object(merge(schemasObject, extendSchemasObject));
       },
       __value: undefined as never,
     };
 
     return objectSchema;
-  },
-  extends: <T extends BaseSchema>(schema: T) => {
-    const extendsSchema: ExtendsSchema<Infer<T>> = {
-      type: 'extends',
-      safeParse: (unknownValue) => {
-        return schema.safeParse(unknownValue);
-      },
-      optional: () => z.optional(extendsSchema),
-      transform: <E,>(callback: (value: unknown) => E) => {
-        return z.transform(extendsSchema, callback);
-      },
-      array: () => {
-        return z.array(extendsSchema);
-      },
-      __value: undefined as never,
-    };
-
-    return extendsSchema;
   },
   transform: <T extends BaseSchema, E>(schema: T, callback: (value: Infer<T>) => E) => {
     const transformSchema: TransformSchema<E> = {
@@ -419,7 +431,7 @@ const strLength = z.string().transform(v => z.number({min: 8}).safeParse(v.lengt
 const res1 = strLength.safeParse('less');
 console.log(res1);
 
-const num = z.number({min: 1}).array().array();
+const num = z.number({min: 1}).array().transform(v => v.map(i => i * 2));
 const res2 = num.safeParse(1);
 console.log(res2);
 
@@ -430,8 +442,10 @@ console.log(res3);
 const objValue = z.object({
   id: z.number(),
   name: z.string(),
+  order: z.number(),
 }).extends({ 
-  age: z.number().optional().array()
+  order: z.string().optional(),
+  age: z.number()
 });
 const res4 = objValue.safeParse({ id: 1, name: 'Bob', age: 25 });
 console.log(res4);
