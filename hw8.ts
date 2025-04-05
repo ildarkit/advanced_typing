@@ -37,7 +37,7 @@ declare function phone<T extends string, N extends 10>(
 // @ts-expect-error
 phone('12345678911');
 
-// 3.
+// 3. Change priority
 // Измените приоритет вывода типов, так что бы typescript показал ошибку в момент присваивания формы,
 // а не селекторов (у селекторов выше приоритет)
 // Если NoInfer не работает, используйте другой паттерн &#x1f609;
@@ -45,11 +45,12 @@ phone('12345678911');
 type AdminBuilderProps<T, R> = {
   data: T[],
   onChange: (value: T) => void
-  transform: (value: T) => R,
-  backTransform: (res: R) => T
-  Form: (props: {
-    value: R,
-    onChange: (value: R) => void
+  transform: (ret: (value: T) => R) => {
+    backTransform: (res: R) => T;
+  },
+  Form?: (props: {
+    value: NoInfer<R>,
+    onChange: (value: NoInfer<R>) => void
   }) => null 
 }
 
@@ -67,27 +68,31 @@ function Form({}:{
 AdminBuilder({
   data: ['1', '2', '3'],
   onChange: (v) => {},
-  transform: (v) => v,
-  backTransform: (v) => v,
+  transform: (v) => { return { backTransform: () => '1'}},
+  // @ts-expect-error
   Form,
 })
 
 // 4. Builder pipe
 // Напишите имплементацию pipe на основе паттерна builder
+type PipeBuilder<T> = {
+  add: <R>(fn: (value: T) => R) => PipeBuilder<R>;
+  run: () => T;
+};
+
+declare function pipe<T>(value: T): PipeBuilder<T>;
+
 const res = pipe(1)
     .add(v => String(v))
     .add(v => ({ name: v }))
-    .add(v => ({ obj: v. name }))
+    .add(v => ({ obj: v.name }))
     .run() // { obj: string }
 
-
-// 5. 
+// 5. Overloading pipe
 // Напишите имплементацию pipe на перегрузках
-const res = pipe(
+const res1 = pipe(
     1,
     v => String(v),
     v => ({ name: v }),
     v => ({ obj: v. name })
 )
-
-
