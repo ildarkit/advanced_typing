@@ -90,9 +90,20 @@ const res = pipe(1)
 
 // 5. Overloading pipe
 // Напишите имплементацию pipe на перегрузках
-const res1 = pipe(
+type Builder<T, R> = (value: T) => R;
+
+type PipeOverload = {
+  <T>(value: T): T,
+  <T, T1>(value: T, b1: Builder<T, T1>): T1,
+  <T, T1, T2>(value: T, b1: Builder<T, T1>, b2: Builder<T1, T2>): T2,
+  <T, T1, T2, T3>(value: T, b1: Builder<T, T1>, b2: Builder<T1, T2>, b3: Builder<T2, T3>): T3,
+};
+
+declare const pipe1: PipeOverload;
+
+const res1 = pipe1(
     1,
     v => String(v),
     v => ({ name: v }),
-    v => ({ obj: v. name })
-)
+    v => ({ obj: v.name })
+);
