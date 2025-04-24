@@ -6,7 +6,7 @@ type DefaultValues<FormData> = Simplify<{
     : FormData[K];
 }>;
 
-type KeyType = string | number;
+type KeyTypes = string | number;
 
 type UnknownTyple = [unknown, ...unknown[]] | [];
 
@@ -19,7 +19,7 @@ type FormDataToPaths<
           {
             [K in keyof FormData]: FormDataToPaths<
               FormData[K],
-              `${Base}.${K & KeyType}`
+              `${Base}.${K & KeyTypes}`
             >;
           }[number],
           undefined
@@ -31,7 +31,7 @@ type FormDataToPaths<
             {
               [K in keyof FormData]: FormDataToPaths<
                 FormData[K],
-                `${Base}.${K & KeyType}`
+                `${Base}.${K & KeyTypes}`
               >;
             }[keyof FormData],
             undefined
@@ -45,8 +45,6 @@ type FormValueFromPath<FormData, Path> =
   Path extends `${infer Key}.${infer Rest}`
     ? FormValueFromPath<FormData[Key & keyof FormData], Rest>
     : FormData[Path & keyof FormData];
-
-type Test = FormValueFromPath<FormData, `arr.key`>;
 
 type FormError = {
   message: string;
@@ -99,7 +97,7 @@ type PathBuilder<
   >(
     p1: P1,
     p2: P2,
-  ): `${P1 & KeyType}.${P2 & KeyType}`;
+  ): `${P1 & KeyTypes}.${P2 & KeyTypes}`;
   <
     P1 extends Path,
     const P2 extends RemoveLeaderDots<
@@ -109,7 +107,7 @@ type PathBuilder<
       : never,
     const P3 extends RemoveLeaderDots<
       FormDataToPaths<
-        FormValueFromPath<FormData, `${P1 & KeyType}.${P2 & KeyType}`>
+        FormValueFromPath<FormData, `${P1 & KeyTypes}.${P2 & KeyTypes}`>
       >
     > extends infer R
       ? R
@@ -118,7 +116,7 @@ type PathBuilder<
     p1: P1,
     p2: P2,
     p3: P3,
-  ): `${P1 & KeyType}.${P2 & KeyType}.${P3 & KeyType}`;
+  ): `${P1 & KeyTypes}.${P2 & KeyTypes}.${P3 & KeyTypes}`;
   <
     P1 extends Path,
     const P2 extends RemoveLeaderDots<
@@ -128,7 +126,7 @@ type PathBuilder<
       : never,
     const P3 extends RemoveLeaderDots<
       FormDataToPaths<
-        FormValueFromPath<FormData, `${P1 & KeyType}.${P2 & KeyType}`>
+        FormValueFromPath<FormData, `${P1 & KeyTypes}.${P2 & KeyTypes}`>
       >
     > extends infer R
       ? R
@@ -137,7 +135,7 @@ type PathBuilder<
       FormDataToPaths<
         FormValueFromPath<
           FormData,
-          `${P1 & KeyType}.${P2 & KeyType}.${P3 & KeyType}`
+          `${P1 & KeyTypes}.${P2 & KeyTypes}.${P3 & KeyTypes}`
         >
       >
     > extends infer R
@@ -148,7 +146,7 @@ type PathBuilder<
     p2: P2,
     p3: P3,
     p4: P4,
-  ): `${P1 & KeyType}.${P2 & KeyType}.${P3 & KeyType}.${P4 & KeyType}`;
+  ): `${P1 & KeyTypes}.${P2 & KeyTypes}.${P3 & KeyTypes}.${P4 & KeyTypes}`;
 };
 
 type Watch<FormData, Path = RemoveLeaderDots<FormDataToPaths<FormData>>> = {
@@ -163,17 +161,20 @@ type Watch<FormData, Path = RemoveLeaderDots<FormDataToPaths<FormData>>> = {
   };
 };
 
+type Control<FormData, Path = RemoveLeaderDots<FormDataToPaths<FormData>>> =
+  <const P extends Path>(path: P) => FormValueFromPath<FormData, P>;
+
+type FormBuilder<FormData, Path = RemoveLeaderDots<FormDataToPaths<FormData>>> =
+  <const P extends Path>(control: Control<FormData>, path: P) => FormValueFromPath<FormData, P>;
+
+type ParentPath<FormData> = (builder: FormBuilder<FormData>) => void;
+
 type UseFormOptions<FormData> = {
   defaultValues?: DefaultValues<FormData>;
-  parrent?: {
-    control: unknown;
-    path: string;
-  };
+  parent?: ParentPath<FormData>;
 };
-type UseFormReturn<
-  FormData,
-  Path = RemoveLeaderDots<FormDataToPaths<FormData>>,
-> = {
+
+type UseFormReturn<FormData, Path = RemoveLeaderDots<FormDataToPaths<FormData>>> = {
   register: <const P extends Path>(path: P) => {};
   watch: Watch<FormData>;
   handleSubmit: (data: FormData) => void;
@@ -185,7 +186,7 @@ type UseFormReturn<
   formState: {
     errors: FormDataToErrors<FormData>;
   };
-  controller: unknown;
+  controller: Control<FormData>;
 };
 
 type UseForm = <FormData>(
@@ -194,7 +195,7 @@ type UseForm = <FormData>(
 
 const useForm: UseForm = (options: any): any => {};
 
-type FormData = {
+type FormValues = {
   name: string;
   value: number;
   inner: {
@@ -220,7 +221,7 @@ function MapForm() {
     setError,
     formState,
     controller,
-  } = useForm<FormData>({
+  } = useForm<FormValues>({
     defaultValues: {
       name: "",
       value: 0,
@@ -232,11 +233,9 @@ function MapForm() {
     },
   });
 
-  /*
-  const form = useForm({
-    parrent: parrentPath(controller, 'arr.0'),
+  const form = useForm<FormValues>({
+    parent: b => b(controller, 'arr.0'),
   });
-  */
 
   const v = watch(b => b('arr.0', 'obj.name'));
   const [name, value] = watch(["tuple.0", "tuple.1"]);
@@ -258,4 +257,3 @@ function MapForm() {
     </form>
   );
 }
-
