@@ -15,28 +15,28 @@ type FormDataToPaths<
   Base extends string = "",
 > = FormData extends unknown[]
   ?
+    | Exclude<
+        {
+          [K in keyof FormData]: FormDataToPaths<
+            FormData[K],
+            `${Base}.${K & KeyTypes}`
+          >;
+        }[number],
+        undefined
+      >
+    | Base
+  : FormData extends object
+    ?
       | Exclude<
           {
             [K in keyof FormData]: FormDataToPaths<
               FormData[K],
               `${Base}.${K & KeyTypes}`
             >;
-          }[number],
+          }[keyof FormData],
           undefined
         >
       | Base
-  : FormData extends object
-    ?
-        | Exclude<
-            {
-              [K in keyof FormData]: FormDataToPaths<
-                FormData[K],
-                `${Base}.${K & KeyTypes}`
-              >;
-            }[keyof FormData],
-            undefined
-          >
-        | Base
     : Base;
 
 type RemoveLeaderDots<T> = T extends `.${infer Rest}` ? Rest : T;
@@ -97,7 +97,7 @@ type PathBuilder<
   >(
     p1: P1,
     p2: P2,
-  ): `${P1 & KeyTypes}.${P2 & KeyTypes}`;
+  ): `${P1 & KeyType}.${P2 & KeyType}`;
   <
     P1 extends Path,
     const P2 extends RemoveLeaderDots<
@@ -107,7 +107,7 @@ type PathBuilder<
       : never,
     const P3 extends RemoveLeaderDots<
       FormDataToPaths<
-        FormValueFromPath<FormData, `${P1 & KeyTypes}.${P2 & KeyTypes}`>
+        FormValueFromPath<FormData, `${P1 & KeyType}.${P2 & KeyType}`>
       >
     > extends infer R
       ? R
@@ -116,7 +116,7 @@ type PathBuilder<
     p1: P1,
     p2: P2,
     p3: P3,
-  ): `${P1 & KeyTypes}.${P2 & KeyTypes}.${P3 & KeyTypes}`;
+  ): `${P1 & KeyType}.${P2 & KeyType}.${P3 & KeyType}`;
   <
     P1 extends Path,
     const P2 extends RemoveLeaderDots<
@@ -126,7 +126,7 @@ type PathBuilder<
       : never,
     const P3 extends RemoveLeaderDots<
       FormDataToPaths<
-        FormValueFromPath<FormData, `${P1 & KeyTypes}.${P2 & KeyTypes}`>
+        FormValueFromPath<FormData, `${P1 & KeyType}.${P2 & KeyType}`>
       >
     > extends infer R
       ? R
@@ -135,7 +135,7 @@ type PathBuilder<
       FormDataToPaths<
         FormValueFromPath<
           FormData,
-          `${P1 & KeyTypes}.${P2 & KeyTypes}.${P3 & KeyTypes}`
+          `${P1 & KeyType}.${P2 & KeyType}.${P3 & KeyType}`
         >
       >
     > extends infer R
@@ -146,7 +146,7 @@ type PathBuilder<
     p2: P2,
     p3: P3,
     p4: P4,
-  ): `${P1 & KeyTypes}.${P2 & KeyTypes}.${P3 & KeyTypes}.${P4 & KeyTypes}`;
+  ): `${P1 & KeyType}.${P2 & KeyType}.${P3 & KeyType}.${P4 & KeyType}`;
 };
 
 type Watch<FormData, Path = RemoveLeaderDots<FormDataToPaths<FormData>>> = {
@@ -162,16 +162,18 @@ type Watch<FormData, Path = RemoveLeaderDots<FormDataToPaths<FormData>>> = {
 };
 
 type Control<FormData, Path = RemoveLeaderDots<FormDataToPaths<FormData>>> =
-  <const P extends Path>(path: P) => FormValueFromPath<FormData, P>;
+  <P extends Path>(path: P) => FormValueFromPath<FormData, P>;
 
-type FormBuilder<FormData, Path = RemoveLeaderDots<FormDataToPaths<FormData>>> =
-  <const P extends Path>(control: Control<FormData>, path: P) => FormValueFromPath<FormData, P>;
+type Fn = (...args: any[]) => any;
 
-type ParentPath<FormData> = (builder: FormBuilder<FormData>) => void;
+type FormBuilder =
+  <T extends Fn, P extends Parameters<T>[0]>(control: T, path: P) => FormBuilder;
+
+type ParentPath = <T extends FormBuilder>(builder: T) => Parameters<T>[1];
 
 type UseFormOptions<FormData> = {
   defaultValues?: DefaultValues<FormData>;
-  parent?: ParentPath<FormData>;
+  parent?: ParentPath;
 };
 
 type UseFormReturn<FormData, Path = RemoveLeaderDots<FormDataToPaths<FormData>>> = {
@@ -233,7 +235,7 @@ function MapForm() {
     },
   });
 
-  const form = useForm<FormValues>({
+  const form = useForm({
     parent: b => b(controller, 'arr.0'),
   });
 
