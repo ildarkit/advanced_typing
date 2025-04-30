@@ -161,19 +161,16 @@ type Watch<FormData, Path = RemoveLeaderDots<FormDataToPaths<FormData>>> = {
   };
 };
 
-type Control<FormData, Path = RemoveLeaderDots<FormDataToPaths<FormData>>> =
-  <P extends Path>(path: P) => FormValueFromPath<FormData, P>;
-
-type Fn = (...args: any[]) => any;
-
-type FormBuilder =
-  <T extends Fn, P extends Parameters<T>[0]>(control: T, path: P) => FormBuilder;
-
-type ParentPath = <T extends FormBuilder>(builder: T) => Parameters<T>[1];
+type Control<FormData> = {
+  __formData: FormData;
+  subPath:
+    <P extends RemoveLeaderDots<FormDataToPaths<FormData>> extends infer R ? R : never>
+      (path: P) => Control<FormValueFromPath<FormData, P>>;
+};
 
 type UseFormOptions<FormData> = {
   defaultValues?: DefaultValues<FormData>;
-  parent?: ParentPath;
+  parent?: Control<FormData>;
 };
 
 type UseFormReturn<FormData, Path = RemoveLeaderDots<FormDataToPaths<FormData>>> = {
@@ -236,7 +233,7 @@ function MapForm() {
   });
 
   const form = useForm({
-    parent: b => b(controller, 'arr.0'),
+    parent: controller.subPath('arr.0'),
   });
 
   const v = watch(b => b('arr.0', 'obj.name'));
